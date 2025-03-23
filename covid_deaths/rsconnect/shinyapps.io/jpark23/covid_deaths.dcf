@@ -1,0 +1,10 @@
+name: covid_deaths
+title:
+username: jpark23
+account: jpark23
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14265272
+bundleId: 9990320
+url: https://jpark23.shinyapps.io/covid_deaths/
+version: 1
