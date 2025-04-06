@@ -145,7 +145,89 @@ ui <- fluidPage(
                  )
                )
              )
-    )
+    ),
     
+    # Tab 5: Ordinal Logistic Regression
+    tabPanel("Ordinal Logistic Regression Model",
+             
+             sidebarLayout(
+               sidebarPanel(
+                 
+                 selectInput(
+                   inputId = "state_olr",
+                   label = "Select a state:",
+                   choices = c("California (West Coast)" = "California", "Texas (Southwest)" = "Texas", "New York (Northeast)" = "New York", "Alabama (Southeast)" = "Alabama"),
+                   selected = "California"),
+                 
+                 checkboxGroupInput(
+                   inputId = "predictors_olr",
+                   label = 'Choose predictors to include in the model and click "Run Model" below:',
+                   choices = c("Age Group" = "age_group",
+                               "Sex" = "sex",
+                               "Education" = "education_attained",
+                               "Income" = "household_income",
+                               "Race/Ethnicity" = "race.ethnicity",
+                               "Depression Diagnosis" = "Depression_Yes",
+                               "Overall Health - Very Good" = "Overall.Health_Very.good",
+                               "Overall Health - Good" = "Overall.Health_Good",
+                               "Overall Health - Fair" = "Overall.Health_Fair",
+                               "Overall Health - Poor" = "Overall.Health_Poor",
+                               "Physical Health: 1-13 Bad Days" = "Healthy.Days_phys_1_13",
+                               "Physical Health: 14+ Bad Days" = "Healthy.Days_phys_14",
+                               "Aerobic Activity" = "Aerobic.Activity_Yes",
+                               "Strength Activity" = "Strength.Activity_Yes",
+                               "Alcohol Consumption" = "Alcohol.Consumption_Yes",
+                               "Binge Drinking" = "Binge.Drinking_Yes",
+                               "Heavy Drinking" = "Heavy.Drinking_Yes",
+                               "Current Smoker" = "Current.Smoker.Status_Yes",
+                               "Smokeless Tobacco" = "Smokeless.Tobacco_Yes",
+                               "Health Care Coverage" = "Health.Care.Coverage_Yes",
+                               "Health Care Cost Barrier" = "Health.Care.Cost_Yes"),
+                   selected = c("Depression_Yes", "Alcohol.Consumption_Yes")
+                ),
+                
+                actionButton("run_model", "Run Model", icon = icon("play")),
+                
+                br(), br(),
+                
+                radioButtons(
+                  inputId = "p_cutoff_olr",
+                  label = "Significance Threshold (p-value)",
+                  choices = c("0.05 (standard)" = 0.05,
+                              "0.01 (strict)" = 0.01,
+                              "0.001 (very strict)" = 0.001),
+                  selected = 0.05)
+                ),
+      
+                mainPanel(
+                      h4("Model Summary"),
+                      div(
+                          style = "background-color: #e6f2ff; padding: 12px; border-radius: 5px; margin-bottom: 10px;",
+                          HTML("Tables below are created using a <strong>random ~10% sample of the available data</strong> to speed up performance. For full analysis, please download the dataset and run the model locally on your desktop.")
+                        ),
+                      HTML('<details>
+                              <summary style="margin-top: 15px; color: #337ab7; cursor: pointer;">
+                              Click here to view or hide how to interpret model results
+                              </summary>
+                              
+                              <div style="background-color: #e6f2ff; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
+                              <strong>Estimate:</strong> The change in mental health outcome associated with the selected predictor. Positive values suggest a positive relationship with mental health, while negative values suggest a negative relationship. Larger values indicate stronger effects.<br><br>
+                              <strong>Confidence Interval:</strong> This range represents where the true effect is likely to fall. A narrower CI suggests a higher certainty about the effect.<br><br>
+                              <strong>p value:</strong> This value indicates the statistical significance of the predictor. A value less than the threshold you selected is highlighted in red, and suggests that the predictor has a significant impact on mental health.<br><br>
+                              <strong>AIC (Akaike Information Criterion):</strong> A measure that balances model fit and simplicity. Lower AIC values indicate a better model.<br><br>
+                              <strong>BIC (Bayesian Information Criterion):</strong> Similar to AIC, but is more conservative than AIC. Lower BIC values indicate a better model.<br><br>
+                              <strong>Log-Likelihood:</strong> Represents how well the model fits the data. Higher values are better, but it does not account for how complex the model is (e.g., high number of variables).
+                              </div>
+                            </details>'),
+                      DT::dataTableOutput("olrmodel_table"),
+                      
+                      hr(),
+                      h4("Model Comparison Table (max. 5 models)"),
+                      DT::dataTableOutput("model_comparison_table"),
+                      actionButton("reset_history", "Reset Model History", icon = icon("undo"))
+                )
+           
+         )
+    )
   )  
 )  

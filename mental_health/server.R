@@ -388,7 +388,7 @@ server <- function(input, output, session){
   output$plot_provider  <- renderPlotly({
     
     df_plot <- df_filtered()  %>%
-      filter(Topic == "Health Care Coverage") %>% 
+      filter(Topic == "Personal Care Provider") %>% 
       mutate(Response = case_when(
         Response %in% c("Yes, only one", "More than one") ~ "Yes",
         TRUE ~ Response)) %>%
@@ -422,7 +422,151 @@ server <- function(input, output, session){
       config(displayModeBar = FALSE)
     
   })
+  
+  
+  # ordinal logistic regression model table and plot in panel 5:
+  
+ # olr_model_data <- reactive({
+#    req(input$state_olr)
+#    filename <- paste0("olrmodel_data_", tolower(input$state_olr), "_2022_subset.rds")
+#    readRDS(filename)
+#  })
+  
+  check_var_levels <- function(var) { length(unique(var[!is.na(var)])) > 1 }
+  
+  olr_model_val <- reactiveVal(NULL)                 # current model
+  model_history <- reactiveVal(data.frame())         # past models
+  
+  observeEvent(input$run_model, {
+    req(input$state_olr, input$predictors_olr)
+    
+    filename <- paste0("olrmodel_data_", tolower(input$state_olr), "_2022_subset.rds")
+    olr_model_data <- readRDS(filename)
 
+    valid_predictors <- input$predictors_olr[sapply(input$predictors_olr, function(p) {
+      check_var_levels(olr_model_data[[p]]) 
+    })]
+
+    if (length(valid_predictors) == 0) {
+      showNotification("No valid predictors selected (predictors need at least two levels), please select other predictors.", type = "error")
+      return(NULL)
+    }
+    
+    olr_model_data_cleaned <- olr_model_data %>%
+      filter(if_any(all_of(valid_predictors), ~ !is.na(.))) 
+
+    na_only_predictors <- input$predictors_olr[
+      sapply(input$predictors_olr, function(p) {
+        col <- olr_model_data_cleaned[[p]]
+        !is.null(col) && all(is.na(col))
+      })
+    ]
+   
+    na_only_predictors_name <- unname(term_labels[paste0(na_only_predictors, "Yes")])
+    na_only_predictors_name <- na_only_predictors_name[!is.na(na_only_predictors_name)]
+    
+    if (length(na_only_predictors_name) > 0) {
+      showNotification(
+        paste("The following predictors have no data after filtering and will not appear in the model output:",
+              paste(na_only_predictors_name, collapse = ", ")),
+        type = "warning", duration = 15)
+    }
+    
+    formula_text <- paste("mental_health ~", paste(valid_predictors, collapse = " + "))
+    formula_obj <- as.formula(formula_text)
+    
+    tryCatch({
+      model <- polr(formula = formula_obj, data = olr_model_data_cleaned, Hess = TRUE)
+      olr_model_val(model)      # update reactive model
+     
+      current_predictors <- paste(valid_predictors, collapse = ", ")
+      
+      new_entry <- data.frame(
+        Model = paste0("Model ", format(Sys.time(), "%H:%M:%S")),
+        Predictors = current_predictors,
+        AIC = AIC(model),
+        BIC = BIC(model),
+        LogLik = logLik(model),
+        stringsAsFactors = FALSE
+      )
+      
+     history <- model_history()
+
+      new_entry$`__model_obj__` <- list(model)
+      
+      updated_history <- rbind(history, new_entry)
+      if (nrow(updated_history) > 5) updated_history <- tail(updated_history, 5)
+      
+      model_history(updated_history)       # update reactive model history
+     
+    }, error = function(e) {
+      showNotification(
+        "There is insufficient data to run the model with the parameters you selected. Try fewer predictors or use full data.",
+        type = "error", duration = 15, closeButton = TRUE, id = "insufficient_data")
+    })
+  })
+  
+  output$olrmodel_table <- DT::renderDataTable({
+    model <- olr_model_val() 
+    tidy_output <- broom::tidy(model)
+    
+    if (!is.null(tidy_output) && nrow(tidy_output) > 0) {
+      
+      tidy_output <- tidy_output %>%
+        mutate(term = as.character(term)) %>%
+        filter(coef.type == "coefficient")
+      
+      reference_levels <- sapply(model$xlevels, function(x) x[[1]])
+      
+      tidy_output <- tidy_output %>%
+        mutate(Variable = recode(term, !!!term_labels),
+               Estimate = round(estimate, 3),
+               conf_int = paste0("[", round(estimate - 1.96 * std.error, 3),  ", ", round(estimate + 1.96 * std.error, 3), "]"),
+               z_value = round(estimate / std.error, 2), 
+               p_value = round(2 * (1 - pnorm(abs(z_value))), 4),
+               Level = str_remove(term, paste0("^", str_extract(term, "^[^_]+"))),
+               RefGroup = sapply(term, get_reference_group, ref_levels = reference_levels)) %>%
+        mutate(is_interaction = str_detect(term, ":"),
+               is_multi_cat = str_detect(term, "age_group|race.ethnicity|education_attained|household_income|sex"),
+               is_significant = !is.na(p_value) & p_value < input$p_cutoff_olr,
+               is_multi_sig = is_multi_cat & is_significant,
+               is_pos = is_significant & Estimate > 0,
+               is_neg = is_significant & Estimate < 0) %>% 
+        mutate(Interpretation = dplyr::case_when(
+                                        is_interaction ~ paste0(Variable, ": interaction term (interpret with caution)"),
+                                        is_multi_sig ~ paste0(Variable, " is significantly different from the reference group (", RefGroup, ")."),
+                                        is_multi_cat ~ paste0(Variable, " is not significantly different from the reference group (", RefGroup, ")."),
+                                        is_pos ~ paste0(Variable, " is significantly associated with worse mental health."),
+                                        is_neg ~ paste0(Variable, " is significantly associated with better mental health."),
+                                        TRUE ~ paste0(Variable, " is not significantly associated with mental health.")),
+              RefGroup = ifelse(is_multi_cat | is_multi_sig, RefGroup, NA)) %>%
+        dplyr::select(Variable, Estimate, conf_int, p_value, Interpretation) %>% 
+        dplyr::rename(`Confidence Interval` = conf_int, `p-value` = p_value)
+      
+      # Apply styling using DT
+      DT::datatable(tidy_output, escape = FALSE, options = list(dom = 't'), rownames = FALSE) %>%
+      DT::formatStyle('Estimate', color = DT::styleInterval(0, c('blue', 'red'))) %>% 
+      DT::formatStyle('p-value', fontWeight = DT::styleInterval(c(input$p_cutoff_olr), c('bold', 'normal')))
+    } else {NULL}
+  })
+  
+  output$model_comparison_table <- DT::renderDataTable({
+    
+    history <- model_history()
+    
+    if (nrow(history) == 0) return(NULL)
+    history <- history %>%
+      mutate(across(c(AIC, BIC, LogLik), round, digits = 0)) %>%
+      rename(`Log-Likelihood` = LogLik) %>% 
+      mutate(Predictors = sapply(Predictors, function(p) {
+          terms <- strsplit(p, ",\\s*")[[1]]
+          clean_names <- dplyr::recode(terms, !!!predictor_labels)
+          paste(clean_names, collapse = ", ")}))
+    
+    DT::datatable(history[, c("Model", "Predictors", "AIC", "BIC", "Log-Likelihood")],
+      options = list(dom = 't', pageLength = 5), rownames = FALSE)
+  })
+  
+  observeEvent(input$reset_history, {model_history(data.frame())})
   
 }
-

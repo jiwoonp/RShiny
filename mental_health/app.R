@@ -7,5 +7,5 @@ shinyApp(ui, server)
 
 
 # Deploy on Shinyapps.io
-library(rsconnect)
-rsconnect::deployApp("C:/Users/JiwoonPark/OneDrive - Key Proteo/Desktop/RShiny/mental_health", appName = "mental_health")
+#library(rsconnect)
+#rsconnect::deployApp("C:/Users/JiwoonPark/OneDrive - Key Proteo/Desktop/RShiny/mental_health", appName = "mental_health")
