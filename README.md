@@ -8,7 +8,7 @@ This interactive Shiny app visualizes trends in COVID-19 deaths, vaccination cov
 **Users can:**
 - Explore COVID-19 death trends, vaccination coverage and intent by sex, age, and race across U.S. regions
 
-<br>
+
 ### [Mental Health Dashboard](https://jpark23.shinyapps.io/mental_health/)
 This interactive Shiny app explores how various health-related behaviors, healthcare access, and demographic factors relate to mental health outcomes in the U.S., using data from the Behavioral Risk Factor Surveillance System (BRFSS).
 
