@@ -424,13 +424,7 @@ server <- function(input, output, session){
   })
   
   
-  # ordinal logistic regression model table and plot in panel 5:
-  
- # olr_model_data <- reactive({
-#    req(input$state_olr)
-#    filename <- paste0("olrmodel_data_", tolower(input$state_olr), "_2022_subset.rds")
-#    readRDS(filename)
-#  })
+  # ordinal logistic regression model tables in panel 5:
   
   check_var_levels <- function(var) { length(unique(var[!is.na(var)])) > 1 }
   
@@ -568,5 +562,186 @@ server <- function(input, output, session){
   })
   
   observeEvent(input$reset_history, {model_history(data.frame())})
+  
+  
+  
+  
+  # random forest model plots in panel 6:
+  
+  observe({
+    if (input$tabs == "Random Forest Model") {
+      showModal(modalDialog(
+        title = "Warning: Memory-Intensive Operation",
+        HTML("Random forest model requires a significant amount of memory and will likely cause timeouts on <strong>shinyapps.io</strong> if you run models with many predictors or run models multiple times. <br><br>
+           <strong>To avoid this:</strong> Please download the source code from the GitHub repository and run the app locally on your desktop for full functionality."),
+        easyClose = TRUE,
+        footer = modalButton("Close")
+      ))
+    }
+  })
+  
+  rf_model_val <- reactiveVal(NULL)
+  
+  observeEvent(input$run_rf_model, {
+    req(input$state_rf, input$predictors_rf)
+    
+    filename <- paste0("olrmodel_data_", tolower(input$state_rf), "_2022_subset.rds")
+    rf_model_data <- readRDS(filename)
+   
+    rf_model_data <- rf_model_data %>% 
+      mutate(age_group = factor(age_group),
+             sex = factor(sex),
+             race.ethnicity = factor(race.ethnicity),
+             education_attained = ifelse(is.na(education_attained), "Missing", education_attained),
+             education_attained = factor(education_attained,levels = c("Less than H.S.", "H.S. or G.E.D.", "Some post-H.S.", "College graduate", "Missing")),
+             household_income = ifelse(is.na(household_income), "Missing", household_income),
+             household_income = factor(household_income, levels = c("Less than $15,000", "$15,000-$24,999", "$25,000-$34,999","$35,000-$49,999", "$50,000+", 
+                                                                    "$50,000-$99,999", "$100,000-$199,999", "$200,000+", "Missing")))
+    
+    # Filter out any predictors with only 1 level (no variance)
+    valid_predictors <- input$predictors_rf[sapply(input$predictors_rf, function(p) {
+      check_var_levels(rf_model_data[[p]])
+    })]
+    
+    if (length(valid_predictors) == 0) {
+      showNotification("No valid predictors selected (predictors need at least two levels), please select other predictors.", type = "error")
+      return(NULL)
+    }
+    
+    rf_data_clean <- rf_model_data %>%
+      filter(if_any(all_of(valid_predictors), ~ !is.na(.))) %>%
+      drop_na(all_of(c("mental_health", valid_predictors)))
+
+    formula_text <- paste("mental_health ~", paste(valid_predictors, collapse = " + "))
+    formula_obj <- as.formula(formula_text)
+    
+    tryCatch({
+      
+      class_weights <- c("0 days" = if (!is.null(input$weight_0days)) input$weight_0days else 1,
+                         "1–13 days" = if (!is.null(input$weight_1_13days)) input$weight_1_13days else 1.5,
+                         "14+ days" = if (!is.null(input$weight_14days)) input$weight_14days else 2)
+      
+      rf_model <- randomForest(formula = formula_obj, data = rf_data_clean, ntree = 30, importance = TRUE, classwt = class_weights)
+      rf_model_val(rf_model)
+      
+      showNotification("Random Forest model successfully trained!", type = "message")
+      
+    }, error = function(e) {
+      print(e)
+      showNotification("Error training Random Forest model. Try different predictors or check data.", type = "error")
+    })
+  })
+  
+  # Variable importance plot
+  output$rf_var_importance <- renderPlot({
+    model <- rf_model_val()
+    req(model)
+    
+    imp <- importance(model, type = 2)
+    imp_df <- data.frame(Variable = rownames(imp), MeanDecreaseGini = imp[, "MeanDecreaseGini"]) %>%
+      arrange(desc(MeanDecreaseGini)) %>% 
+      mutate(DisplayLabel = dplyr::recode(Variable, !!!predictor_labels)) %>% 
+      mutate(MeanDecreaseGini = round(MeanDecreaseGini, 2))
+    
+    ggplot(imp_df, aes(x = reorder(DisplayLabel, MeanDecreaseGini), y = MeanDecreaseGini)) +
+      geom_col(fill = "steelblue") +
+      geom_text(aes(label = MeanDecreaseGini), hjust = -0.1, size = 5) + 
+      coord_flip() +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+      labs(x = "Predictor", y = "Mean Decrease in Gini Impurity") +
+      theme_bw(base_size = 15) +  
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  })
+  
+  # Outcome predictor using trained model
+  
+  output$rf_predictor_inputs <- renderUI({
+    req(rf_model_val(), input$predictors_rf)
+    
+    rf_model <- rf_model_val()
+    
+    lapply(input$predictors_rf, function(var) {
+      choices <- if (var %in% names(rf_model$forest$xlevels)) {rf_model$forest$xlevels[[var]]} else {c("Yes", "No")}
+      
+      selectInput(
+        inputId = paste0("rf_input_", var),
+        label = predictor_labels[[var]],
+        choices = choices, selected = choices[1]
+      )
+    })
+  })
+  
+  rf_prediction_data <- eventReactive(input$predict_rf, {
+    req(rf_model_val(), input$predictors_rf)
+
+    rf_model <- rf_model_val()
+    
+    prediction_data <- data.frame(
+      lapply(input$predictors_rf, function(var) {
+        input_val <- input[[paste0("rf_input_", var)]]
+        factor(input_val, levels = rf_model$forest$xlevels[[var]])
+      }))
+    names(prediction_data) <- input$predictors_rf
+    
+    return(prediction_data)
+  })
+  
+  # Outcome predictor using trained model  - plot and summary statement
+  
+  rf_prediction_result <- reactive({
+    req(rf_model_val(), rf_prediction_data())
+    
+    rf_model <- rf_model_val()
+    new_data <- rf_prediction_data()
+    
+    probs <- tryCatch({
+      predict(rf_model, newdata = new_data, type = "prob")
+    }, error = function(e) {
+      showNotification(paste("Prediction failed:", e$message), type = "error")
+      return(NULL)
+    })
+    
+    if (is.null(probs) || nrow(probs) == 0) {
+      showNotification("Prediction failed: no probabilities returned.", type = "error")
+      return(NULL)
+    }
+    
+    list(probs = probs, prob_0days = round(100 * probs[1, "0 days"], 1), prob_1_13days = round(100 * probs[1, "1–13 days"], 1), 
+         prob_14days = round(100 * probs[1, "14+ days"], 1))
+  })
+  
+  output$rf_prediction_plot <- renderPlot({
+    result <- rf_prediction_result()
+    req(result)
+    
+    prob_df <- data.frame(mentalhealth = colnames(result$probs), probability = as.numeric(result$probs[1, ]))
+    
+    ggplot(prob_df, aes(x = mentalhealth, y = probability * 100)) +
+      geom_col(fill = "steelblue") +
+      geom_text(aes(label = scales::percent(probability, accuracy = 0.1)), vjust = -0.5, size = 5) +
+      ylim(0, 105) +
+      labs(x = "Predicted Mental Health Outcome", y = "Probability (%)") +
+      theme_bw(base_size = 15) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  })
+  
+  output$rf_prediction_summary <- renderUI({
+    result <- rf_prediction_result()
+    req(result)
+  
+    predictor_labels <- sapply(input$predictors_rf, function(var) {
+      if (!is.null(predictor_labels[[var]])) predictor_labels[[var]] else var
+    })
+    predictor_labels_text <- paste(predictor_labels, collapse = ", ")
+    
+    HTML(sprintf(
+      '<div style="background-color: #e7f4f4; padding: 12px; border-radius: 6px; margin-top: 15px;">
+      Based on the random forest model using the selected predictors <strong>(%s)</strong>, 
+      an individual with the selected characteristics has a <strong>%s%%</strong> chance of experiencing 0 bad mental health days, 
+      <strong>%s%%</strong> chance of 1–13 days, and <strong>%s%%</strong> chance of 14+ days.
+    </div>',
+      predictor_labels_text, result$prob_0days, result$prob_1_13days, result$prob_14days
+    ))
+  })
   
 }

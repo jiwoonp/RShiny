@@ -9,6 +9,12 @@ library(dplyr)
 library(tidyr)
 library(forcats)
 library(stringr)
+library(conflicted)
+conflicted::conflicts_prefer(dplyr::filter)
+conflicted::conflicts_prefer(dplyr::select)
+conflicted::conflicts_prefer(tidyr::complete)
+conflicted::conflicts_prefer(plotly::layout)
+conflicted::conflicts_prefer(ggplot2::margin)
 
 # Visualization
 library(ggplot2)
@@ -17,6 +23,7 @@ library(plotly)
 # Modeling
 library(MASS)
 library(broom)
+library(randomForest)
 
 
 ##### IMPORT DATA
@@ -213,10 +220,32 @@ predictor_labels <- c(
   "Depression_Yes" = "Depression Diagnosis",
   "Aerobic.Activity_Yes" = "Aerobic Activity", "Strength.Activity_Yes" = "Strength Training",
   "Alcohol.Consumption_Yes" = "Alcohol Consumption", "Binge.Drinking_Yes" = "Binge Drinking", "Heavy.Drinking_Yes" = "Heavy Drinking",
-  "Current.Smoker.Status_Yes" = "Smoker", "Smokeless.Tobacco_YesYes" = "Smokeless Tobacco",
+  "Current.Smoker.Status_Yes" = "Smoker", "Smokeless.Tobacco_Yes" = "Smokeless Tobacco",
   "Health.Care.Coverage_Yes" = "Has Healthcare Coverage", "Health.Care.Cost_Yes" = "Cost Barrier to Care", "Personal.Care.Provider_Yes" = "Has Primary Care Provider"
 )
 
+# predictor choice for models in UI
+predictor_choices <- c("Age Group" = "age_group",
+  "Sex" = "sex",
+  "Education" = "education_attained",
+  "Income" = "household_income",
+  "Race/Ethnicity" = "race.ethnicity",
+  "Depression Diagnosis" = "Depression_Yes",
+  "Overall Health - Very Good" = "Overall.Health_Very.good",
+  "Overall Health - Good" = "Overall.Health_Good",
+  "Overall Health - Fair" = "Overall.Health_Fair",
+  "Overall Health - Poor" = "Overall.Health_Poor",
+  "Physical Health: 1-13 Bad Days" = "Healthy.Days_phys_1_13",
+  "Physical Health: 14+ Bad Days" = "Healthy.Days_phys_14",
+  "Aerobic Activity" = "Aerobic.Activity_Yes",
+  "Strength Activity" = "Strength.Activity_Yes",
+  "Alcohol Consumption" = "Alcohol.Consumption_Yes",
+  "Binge Drinking" = "Binge.Drinking_Yes",
+  "Heavy Drinking" = "Heavy.Drinking_Yes",
+  "Current Smoker" = "Current.Smoker.Status_Yes",
+  "Smokeless Tobacco" = "Smokeless.Tobacco_Yes",
+  "Health Care Coverage" = "Health.Care.Coverage_Yes",
+  "Health Care Cost Barrier" = "Health.Care.Cost_Yes")
 
 #######################################################################################
 

@@ -162,27 +162,7 @@ ui <- fluidPage(
                  checkboxGroupInput(
                    inputId = "predictors_olr",
                    label = 'Choose predictors to include in the model and click "Run Model" below:',
-                   choices = c("Age Group" = "age_group",
-                               "Sex" = "sex",
-                               "Education" = "education_attained",
-                               "Income" = "household_income",
-                               "Race/Ethnicity" = "race.ethnicity",
-                               "Depression Diagnosis" = "Depression_Yes",
-                               "Overall Health - Very Good" = "Overall.Health_Very.good",
-                               "Overall Health - Good" = "Overall.Health_Good",
-                               "Overall Health - Fair" = "Overall.Health_Fair",
-                               "Overall Health - Poor" = "Overall.Health_Poor",
-                               "Physical Health: 1-13 Bad Days" = "Healthy.Days_phys_1_13",
-                               "Physical Health: 14+ Bad Days" = "Healthy.Days_phys_14",
-                               "Aerobic Activity" = "Aerobic.Activity_Yes",
-                               "Strength Activity" = "Strength.Activity_Yes",
-                               "Alcohol Consumption" = "Alcohol.Consumption_Yes",
-                               "Binge Drinking" = "Binge.Drinking_Yes",
-                               "Heavy Drinking" = "Heavy.Drinking_Yes",
-                               "Current Smoker" = "Current.Smoker.Status_Yes",
-                               "Smokeless Tobacco" = "Smokeless.Tobacco_Yes",
-                               "Health Care Coverage" = "Health.Care.Coverage_Yes",
-                               "Health Care Cost Barrier" = "Health.Care.Cost_Yes"),
+                   choices = predictor_choices,
                    selected = c("Depression_Yes", "Alcohol.Consumption_Yes")
                 ),
                 
@@ -203,7 +183,7 @@ ui <- fluidPage(
                       h4("Model Summary"),
                       div(
                           style = "background-color: #e6f2ff; padding: 12px; border-radius: 5px; margin-bottom: 10px;",
-                          HTML("Tables below are created using a <strong>random ~10% sample of the available data</strong> to speed up performance. For full analysis, please download the dataset and run the model locally on your desktop.")
+                          HTML("<strong>Note:</strong> Tables below are created using a <strong>random ~10% sample of the available data</strong> to speed up performance. For full analysis, please download the dataset and run the model locally on your desktop.")
                         ),
                       HTML('<details>
                               <summary style="margin-top: 15px; color: #337ab7; cursor: pointer;">
@@ -228,6 +208,64 @@ ui <- fluidPage(
                 )
            
          )
+    ), 
+    
+    # Tab 6: Random Forest Model
+    tabPanel("Random Forest Model",
+             
+             sidebarLayout(
+               sidebarPanel(
+                 
+                 selectInput(
+                   inputId = "state_rf",
+                   label = "Select a state:",
+                   choices = c("California (West Coast)" = "California", "Texas (Southwest)" = "Texas", "New York (Northeast)" = "New York", "Alabama (Southeast)" = "Alabama"),
+                   selected = "California"),
+                 
+                 checkboxGroupInput(
+                   inputId = "predictors_rf",
+                   label = 'Choose predictors to include in the model and click "Run Model" below:',
+                   choices = predictor_choices,
+                   selected = c("Depression_Yes", "Alcohol.Consumption_Yes")
+                 ),
+                 
+                 actionButton("run_rf_model", "Run Model", icon = icon("tree")),
+                 
+                 hr(),
+                 h4("Predict mental health outcomes for a new individual"),
+                 
+                 uiOutput("rf_predictor_inputs"),
+                 actionButton("predict_rf", "Predict Mental Health", icon = icon("question"))
+               ),
+               
+               mainPanel(
+                 h4("Variable Importance (Gini Index)"),
+                 div(
+                   style = "background-color: #e6f2ff; padding: 12px; border-radius: 5px; margin-bottom: 10px;",
+                   HTML("<strong>Note:</strong> Demographic variables (e.g. Age Group, Sex, etc.) may appear more important than they truly are due to how Gini importance is calculated in the random forest model.")
+                 ),
+                 plotOutput("rf_var_importance"),
+                 br(), br(),
+                 plotOutput("rf_prediction_plot"),
+                 tags$div(
+                   style = "background-color: #e6f2ff; padding: 12px; border-radius: 5px; margin-bottom: 10px;",
+                   HTML("<strong>Note:</strong> The model applies moderate class weighting (0 days = 1, 1–13 days = 1.5, 14+ days = 2) to handle imbalance in mental health outcomes. 
+                        You can customize these weights in the advanced options below for exploratory analysis. Please re-run the model by clicking 'Run Model' after updating the weights.")
+                 ),
+                 checkboxInput("show_advanced_rf", "Show advanced options", FALSE),
+                 
+                 conditionalPanel(
+                   condition = "input.show_advanced_rf == true",
+                   tags$div(style = "margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;",
+                            numericInput("weight_0days", "Weight for '0 days'", value = 1, min = 0, step = 0.1),
+                            numericInput("weight_1_13days", "Weight for '1–13 days'", value = 1.5, min = 0, step = 0.1),
+                            numericInput("weight_14days", "Weight for '14+ days'", value = 2, min = 0, step = 0.1)
+                   )
+                 ),
+                 
+                 uiOutput("rf_prediction_summary")
+               )
+             )
     )
   )  
 )  

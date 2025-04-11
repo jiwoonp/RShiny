@@ -15,3 +15,4 @@ This interactive Shiny app explores how various health-related behaviors, health
 **Users can:**
 - Visualize trends across states and over time in overall health, physical activity, substance use, and healthcare access by age, race, education, income, or sex
 - Build an ordinal logistic regression model using a subset of simulated individual-level BRFSS data to explore predictors significantly associated with mental health outcomes
+- Train a random forest model to explore key predictors of mental health, and estimate the probability of poor mental health based on selected risk factors
