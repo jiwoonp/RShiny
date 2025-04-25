@@ -3,6 +3,10 @@ ui <- fluidPage(
   theme = bs_theme(bootswatch = "cerulean", font_scale = 0.9),
   tags$style(HTML("summary.hover-summary {color: #337ab7;cursor: pointer;} summary.hover-summary:hover {text-decoration: underline;}")),
   tags$style(HTML(".forecast-box p {margin-top: 2px;margin-bottom: 2px;line-height: 1.3;}")),
+  tags$head(tags$script(HTML("$(document).on('click', 'a', function(event){
+                                                              event.preventDefault();
+                                                              window.open(this.href, '_blank');});"))),
+  
   br(),
   
   titlePanel("Anxiety Trends & Forecasting"),
@@ -39,7 +43,15 @@ ui <- fluidPage(
       # Download table and plot
       div(style = "display: flex; gap: 8px;",
           downloadButton("download_plot", "Download Plot as PNG")),
-          downloadButton("download_forecast", "Download Forecast as CSV")
+          downloadButton("download_forecast", "Download Forecast as CSV"),
+      
+      # Data source
+      br(),
+      tags$hr(),
+      tags$p("Data collected from the U.S. Census Bureau:",
+             htmltools::a("Household Pulse Survey", 
+                          href = "https://www.census.gov/programs-surveys/household-pulse-survey.html", 
+                          target = "_blank"))
           
     ),
     

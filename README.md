@@ -19,7 +19,7 @@ This interactive Shiny app explores how various health-related behaviors, health
 
 
 ### [Anxiety Trends Dashboard](https://jpark23.shinyapps.io/anxiety/)
-This Shiny app visualizes trends in anxiety symptoms in the U.S. and generates short-term forecasts using national survey data from the NHANES Household Pulse Survey.
+This Shiny app visualizes trends in anxiety symptoms in the U.S. and generates short-term forecasts using national survey data from the U.S. Census Household Pulse Survey.
 
 **Users can:**
 - Visualize changes in anxiety symptoms over time across demographic groups

@@ -25,8 +25,8 @@ library(prophet)
 load_data <- FALSE
 
 if (load_data) {
-# import NHANES data: filtering a subset of demographics to reduce memory use in shinyapps.io
-df <- read.csv("NHANES_anxiety_cleandata.csv") %>%
+# import HPS data: filtering a subset of demographics to reduce memory use in shinyapps.io
+df <- read.csv("HPS_anxiety_cleandata.csv") %>%
   filter(group_category %in% c("total", "age", "sex_at_birth", "gender", "sexual_orientation", "hispanic_origin_and_race", "education", "marital_status",
                                "household_income", "respondent_employed_in_the_last_7_days", "respondent_or_household_member_experienced_loss_of_employment_income_in_last_4_weeks",
                                "active_duty_military", "difficulty_remembering_or_concentrating")) %>% 
@@ -62,11 +62,11 @@ df <- read.csv("NHANES_anxiety_cleandata.csv") %>%
   mutate(frequency = factor(frequency, levels = c("Not at all", "Several days", "More than half the days", "Nearly every day", "Did not report"))) %>% 
   mutate(mid_date = as.Date(mid_date, format = "%m/%d/%Y"))
 
-saveRDS(df, "NHANES_anxiety_data_short.rds")
+saveRDS(df, "HPS_anxiety_data_short.rds")
 
 }
 
-df <- readRDS("NHANES_anxiety_data_short.rds")
+df <- readRDS("HPS_anxiety_data_short.rds")
 
 
 # Demographics group names for UI

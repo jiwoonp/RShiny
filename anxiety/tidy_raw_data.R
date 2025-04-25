@@ -4,7 +4,7 @@ library(tidyr)
 library(stringr)
 library(purrr)
 
-sheet_names <- excel_sheets("C:/Users/JiwoonPark/OneDrive - Key Proteo/Desktop/RShiny/anxiety/NHANES_anxiety_rawdata.xlsx")
+sheet_names <- excel_sheets("C:/Users/JiwoonPark/OneDrive - Key Proteo/Desktop/RShiny/anxiety/HPS_anxiety_rawdata.xlsx")
 wave_to_date <- data.frame(wave = c("Week41", "Week42", "Week43", "Week44", "Week45", "Week46", "Week47", "Week48", "Week49", "Week50",
                                     "Week51", "Week52", "Week53", "Week54", "Week55", "Week56", "Week57", "Week58", "Week59", "Week60",
                                     "Week61", "Week62", "Week63"),
@@ -19,7 +19,7 @@ wave_to_date$mid_date <- wave_to_date$start_date + ((wave_to_date$end_date - wav
 
 tidy_data <- function(sheet) {
   
-  df <- read_excel("C:/Users/JiwoonPark/OneDrive - Key Proteo/Desktop/RShiny/anxiety/NHANES_anxiety_rawdata.xlsx", sheet = sheet, skip = 4) %>%
+  df <- read_excel("C:/Users/JiwoonPark/OneDrive - Key Proteo/Desktop/RShiny/anxiety/HPS_anxiety_rawdata.xlsx", sheet = sheet, skip = 4) %>%
     filter(!startsWith(`Select Characteristics`, "*"), !is.na(`Select Characteristics`)) %>%
     mutate(across(-`Select Characteristics`, ~ suppressWarnings(as.numeric(gsub(",", "", .))))) %>%
     mutate(is_group_header = if_else(rowSums(!is.na(across(-`Select Characteristics`))) == 0, TRUE, FALSE)) %>%
@@ -42,5 +42,5 @@ all_waves <- map_dfr(sheet_names, tidy_data) %>%
   select(-is_group_header) %>%  
   left_join(., wave_to_date %>% select(wave, mid_date), by = "wave") 
 
-write.csv(all_waves, "NHANES_anxiety_cleandata.csv")
+write.csv(all_waves, "HPS_anxiety_cleandata.csv")
 
