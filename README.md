@@ -16,3 +16,11 @@ This interactive Shiny app explores how various health-related behaviors, health
 - Visualize trends across states and over time in overall health, physical activity, substance use, and healthcare access by age, race, education, income, or sex
 - Build an ordinal logistic regression model using a subset of simulated individual-level BRFSS data to explore predictors significantly associated with mental health outcomes
 - Train a random forest model to explore key predictors of mental health, and estimate the probability of poor mental health based on selected risk factors
+
+
+### [Anxiety Trends Dashboard](https://jpark23.shinyapps.io/anxiety/)
+This Shiny app visualizes trends in anxiety symptoms in the U.S. and generates short-term forecasts using national survey data from the NHANES Household Pulse Survey.
+
+**Users can:**
+- Visualize changes in anxiety symptoms over time across demographic groups
+- Generate 1–6 months forecasts of anxiety trends using the Prophet time series model, and download plots and forecast summaries
